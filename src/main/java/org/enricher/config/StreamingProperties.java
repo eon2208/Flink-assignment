@@ -4,5 +4,6 @@ public record StreamingProperties(
     String bootstrapServers,
     String groupId,
     String inputTopic,
-    String outputTopic
+    String outputTopic,
+    String serviceBaseUrl
 ){}
