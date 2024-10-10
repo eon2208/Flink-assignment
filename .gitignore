@@ -1,0 +1,20 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Others ###
+.DS_Store
+*.log
+
+### Gradle ###
+.gradle
+build/
+
+### Dagger ###
+src/main/generated
+src/test/generated_tests
+
+### Build ###
+out
