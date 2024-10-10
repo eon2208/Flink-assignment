@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "EnrichedMessage",
+  "namespace": "org.enricher.model",
+  "fields": [
+    { "name": "value", "type": "int" },
+    { "name": "transformed", "type": "string" },
+    { "name": "someIntData1", "type": "int" },
+    { "name": "someIntData2", "type": "int" },
+    { "name": "someStringData1", "type": "string" },
+    { "name": "someStringData2", "type": "string" }
+  ]
+}

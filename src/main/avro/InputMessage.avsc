@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "InputMessage",
+  "namespace": "org.enricher.model",
+  "fields": [
+    { "name": "value", "type": "int" }
+  ]
+}

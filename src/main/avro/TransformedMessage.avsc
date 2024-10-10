@@ -1,0 +1,9 @@
+{
+  "type": "record",
+  "name": "TransformedMessage",
+  "namespace": "org.enricher.model",
+  "fields": [
+    { "name": "value", "type": "int" },
+    { "name": "transformed", "type": "string" }
+  ]
+}

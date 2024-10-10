@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "PreEnrichmentMessage",
+  "namespace": "org.enricher.model",
+  "fields": [
+    {
+      "name": "transformedMessage",
+      "type": "org.enricher.model.TransformedMessage"
+    },
+    {
+      "name": "serviceResponse",
+      "type": "org.enricher.model.ServiceResponse"
+    }
+  ]
+}

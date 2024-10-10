@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "ServiceResponse",
+  "namespace": "org.enricher.model",
+  "fields": [
+    { "name": "someIntData1", "type": "int" },
+    { "name": "someIntData2", "type": "int" },
+    { "name": "someStringData1", "type": "string" },
+    { "name": "someStringData2", "type": "string" }
+  ]
+}
