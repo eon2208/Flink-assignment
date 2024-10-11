@@ -1,0 +1,97 @@
+services:
+
+  wiremock:
+    image: wiremock/wiremock:latest
+    container_name: wiremock
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./service-wiremock:/home/wiremock
+    command: ["--global-response-templating"]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      CLUSTER_ID: 'ciWo7IWazngRchmPES6q5A=='
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_BROKER_ID: 1
+    healthcheck:
+      test: kafka-cluster cluster-id --bootstrap-server kafka:9092 || exit 1
+      interval: 1s
+      timeout: 60s
+      retries: 60
+    volumes:
+      - ./kafka-data:/var/lib/kafka/data
+    depends_on:
+      - wiremock
+
+  init-kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: [ '/bin/sh', '-c' ]
+    volumes:
+      - ./send-kafka-messages.sh:/tmp/send-kafka-messages.sh
+    command: /tmp/send-kafka-messages.sh
+
+  enrichment-flink-jobmanager:
+    hostname: enrichment-flink-jobmanager
+    container_name: enrichment-flink-jobmanager
+    image: "enrichment-flink:1.20.0"
+    command: >
+      standalone-job
+      --service.base.url http://wiremock:8080
+      --kafka.bootstrap.servers kafka:9092
+      --kafka.group.id enrichment-job
+      --kafka.input.topic input-topic
+      --kafka.output.topic output-topic
+    ports:
+      - "8081:8081"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  enrichment-flink-taskmanager:
+    hostname: enrichment-flink-taskmanager
+    container_name: enrichment-flink-taskmanager
+    image: "enrichment-flink:1.20.0"
+    command: taskmanager
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      JOB_MANAGER_RPC_ADDRESS: enrichment-flink-jobmanager
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/console:v2.5.2
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: nc -z redpanda 8080 || exit 1
+      start_period: 45s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "8089:8080"

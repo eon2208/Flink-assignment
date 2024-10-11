@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPattern": "/value/(\\d+)"
+  },
+  "response": {
+    "status": 200,
+    "body": "{ \"someIntData1\": {{request.pathSegments.[1]}}, \"someIntData2\": {{request.pathSegments.[1]}}, \"someStringData1\": \"{{request.pathSegments.[1]}}\", \"someStringData2\": \"{{request.pathSegments.[1]}}\" }",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "transformers": ["response-template"]
+  }
+}

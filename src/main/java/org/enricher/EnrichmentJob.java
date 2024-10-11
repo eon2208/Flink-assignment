@@ -1,6 +1,8 @@
 package org.enricher;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
@@ -8,13 +10,16 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.enricher.config.StreamingProperties;
 import org.enricher.model.EnrichedMessage;
 import org.enricher.model.InputMessage;
+import org.enricher.model.PreEnrichmentMessage;
 import org.enricher.operator.connector.kafka.sink.EnrichedMessageKafkaSink;
 import org.enricher.operator.connector.kafka.source.InputMessagesKafkaSource;
 import org.enricher.operator.enricher.MessageEnricher;
 import org.enricher.operator.fetcher.ServiceFetcher;
-import org.enricher.operator.transformation.TransformationOperator;
+import org.enricher.operator.transformation.MessageTransformer;
 
 import java.util.concurrent.TimeUnit;
+
+import static org.enricher.config.StreamingProperties.*;
 
 public class EnrichmentJob {
 
@@ -23,19 +28,21 @@ public class EnrichmentJob {
     }
 
     public static void main(String[] args) throws Exception {
+        ParameterTool params = ParameterTool.fromArgs(args);
         StreamingProperties properties = new StreamingProperties(
-                "localhost:9092",
-                "enrichment-job",
-                "input-topic",
-                "output-topic",
-                "localhost:8000"
+                params.get(KAFKA_BOOTSTRAP_SERVERS),
+                params.get(KAFKA_GROUP_ID),
+                params.get(KAFKA_INPUT_TOPIC),
+                params.get(KAFKA_OUTPUT_TOPIC),
+                params.get(SERVICE_BASE_URL)
         );
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
         StreamingJob streamingJob = new StreamingJob(
                 env,
                 InputMessagesKafkaSource.createKafkaSource(properties),
                 EnrichedMessageKafkaSink.createSink(properties),
-                new TransformationOperator(),
+                new MessageTransformer(),
                 new ServiceFetcher(properties.serviceBaseUrl()),
                 new MessageEnricher()
         );
@@ -47,7 +54,7 @@ public class EnrichmentJob {
         private final StreamExecutionEnvironment env;
         private final KafkaSource<InputMessage> source;
         private final KafkaSink<EnrichedMessage> sink;
-        private final TransformationOperator transformationOperator;
+        private final MessageTransformer messageTransformer;
         private final ServiceFetcher serviceFetcher;
         private final MessageEnricher messageEnricher;
 
@@ -55,13 +62,13 @@ public class EnrichmentJob {
                 StreamExecutionEnvironment env,
                 KafkaSource<InputMessage> source,
                 KafkaSink<EnrichedMessage> sink,
-                TransformationOperator transformationOperator,
+                MessageTransformer messageTransformer,
                 ServiceFetcher serviceFetcher,
                 MessageEnricher messageEnricher
         ) {
             this.env = env;
             this.source = source;
-            this.transformationOperator = transformationOperator;
+            this.messageTransformer = messageTransformer;
             this.serviceFetcher = serviceFetcher;
             this.messageEnricher = messageEnricher;
             this.sink = sink;
@@ -77,8 +84,9 @@ public class EnrichmentJob {
                     .keyBy(InputMessage::getValue);
 
             var transformingStream = dataStreamSource
-                    .map(transformationOperator)
-                    .name("Flink Transformation");
+                    .map(messageTransformer)
+                    .name("Flink Transformer")
+                    .disableChaining();
 
             var fetchingStream = AsyncDataStream.orderedWait(
                     transformingStream,
@@ -88,8 +96,10 @@ public class EnrichmentJob {
             ).name("Flink Fetcher");
 
             var enrichingStream = fetchingStream
+                    .keyBy((KeySelector<PreEnrichmentMessage, Integer>) value -> value.getTransformedMessage().getValue())
                     .map(messageEnricher)
-                    .name("Flink Enrichment");
+                    .name("Flink Enrichment")
+                    .disableChaining();
 
             enrichingStream.sinkTo(sink)
                     .name("Flink Sink");

@@ -7,6 +7,11 @@ plugins {
     id("com.github.davidmc24.gradle.plugin.avro") version "1.6.0"
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 group = "org.enricher"
 version = "1.0-SNAPSHOT"
 
@@ -59,6 +64,8 @@ dependencies {
     implementation("org.apache.avro:avro:1.12.0")
 
     flinkShadowJar("org.apache.flink:flink-connector-kafka:${flinkConnectorVersion}")
+    flinkShadowJar("org.apache.flink:flink-avro:${flinkVersion}")
+    flinkShadowJar("org.apache.avro:avro:1.12.0")
 
     testImplementation("org.apache.flink:flink-test-utils:${flinkVersion}")
     testImplementation("org.apache.flink:flink-runtime:${flinkVersion}")
@@ -73,9 +80,5 @@ tasks {
     named<Test>("test") {
         useJUnitPlatform()
     }
-}
-
-avro {
-    isCreateSetters.set(false)
 }
 

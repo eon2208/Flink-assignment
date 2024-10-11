@@ -2,6 +2,7 @@ package org.enricher.operator.connector.kafka.sink;
 
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
+import org.apache.flink.formats.avro.AvroFormatOptions;
 import org.apache.flink.formats.avro.AvroSerializationSchema;
 import org.enricher.config.StreamingProperties;
 import org.enricher.model.EnrichedMessage;
@@ -17,7 +18,12 @@ public final class EnrichedMessageKafkaSink {
                 .setBootstrapServers(properties.bootstrapServers())
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
                         .setTopic(properties.outputTopic())
-                        .setValueSerializationSchema(AvroSerializationSchema.forSpecific(EnrichedMessage.class))
+                        .setValueSerializationSchema(
+                                AvroSerializationSchema.forSpecific(
+                                        EnrichedMessage.class,
+                                        AvroFormatOptions.AvroEncoding.JSON
+                                )
+                        )
                         .build()
                 ).build();
     }

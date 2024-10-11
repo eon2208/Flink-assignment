@@ -23,7 +23,7 @@ public class ServiceFetcher implements AsyncFunction<TransformedMessage, PreEnri
 
     private final String serviceBaseUrl;
 
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     public ServiceFetcher(String serviceUrl) {
         this.serviceBaseUrl = serviceUrl;
