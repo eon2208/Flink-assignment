@@ -56,16 +56,17 @@ configurations {
 
 val flinkVersion = "1.20.0"
 val flinkConnectorVersion = "3.2.0-1.18"
+val avroVersion = "1.12.0"
 
 dependencies {
     implementation("org.apache.flink:flink-java:${flinkVersion}")
     implementation("org.apache.flink:flink-streaming-java:${flinkVersion}")
     implementation("org.apache.flink:flink-avro:${flinkVersion}")
-    implementation("org.apache.avro:avro:1.12.0")
+    implementation("org.apache.avro:avro:${avroVersion}")
 
     flinkShadowJar("org.apache.flink:flink-connector-kafka:${flinkConnectorVersion}")
     flinkShadowJar("org.apache.flink:flink-avro:${flinkVersion}")
-    flinkShadowJar("org.apache.avro:avro:1.12.0")
+    flinkShadowJar("org.apache.avro:avro:${avroVersion}")
 
     testImplementation("org.apache.flink:flink-test-utils:${flinkVersion}")
     testImplementation("org.apache.flink:flink-runtime:${flinkVersion}")

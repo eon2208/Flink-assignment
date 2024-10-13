@@ -3,43 +3,26 @@ set -eu
 
 IMAGE=enrichment-flink:1.20.0
 
-cd "$(dirname "$0")"
-
 build_flink_jar() {
-  (cd .. && ./gradlew :clean :shadowJar)
-  cp -r ../build/libs ./build
+  ./gradlew clean shadowJar
 }
 
 build_docker_image() {
   echo "Building docker image for $IMAGE"
-  docker build -t "$IMAGE" -f ../Dockerfile .
-}
-
-setup_volumes() {
-  if [ ! -d "kafka-data" ]; then
-    mkdir -p kafka-data
-  else
-    echo "kafka-data directory already exists."
-  fi
-  chmod -R 777 kafka-data
+  docker build -t "$IMAGE" --no-cache .
 }
 
 make_script_executable() {
-  if [ -f "send-kafka-messages.sh" ]; then
-    chmod +x send-kafka-messages.sh
-  else
-    exit 1
-  fi
+  chmod +x ./dev/kafka-init/send-kafka-messages.sh
 }
 
 clean_up() {
   echo "Stopping and removing any existing containers..."
-  docker-compose down -v --remove-orphans
+  docker-compose -f dev/docker-compose.yml down -v --remove-orphans
 }
 
 start_hcpe_locally() {
-  setup_volumes
-  docker-compose up --force-recreate --remove-orphans
+  docker-compose -f dev/docker-compose.yml up --force-recreate --remove-orphans
 }
 
 clean_up

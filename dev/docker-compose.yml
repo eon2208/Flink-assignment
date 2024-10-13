@@ -26,30 +26,18 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LOG_DIRS: /var/lib/kafka/data
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_MIN_INSYNC_REPLICAS: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_BROKER_ID: 1
     healthcheck:
       test: kafka-cluster cluster-id --bootstrap-server kafka:9092 || exit 1
       interval: 1s
       timeout: 60s
       retries: 60
-    volumes:
-      - ./kafka-data:/var/lib/kafka/data
-    depends_on:
-      - wiremock
 
   init-kafka:
     image: confluentinc/cp-kafka:7.4.0
-    depends_on:
-      kafka:
-        condition: service_healthy
     entrypoint: [ '/bin/sh', '-c' ]
     volumes:
-      - ./send-kafka-messages.sh:/tmp/send-kafka-messages.sh
+      - ./kafka-init/send-kafka-messages.sh:/tmp/send-kafka-messages.sh
     command: /tmp/send-kafka-messages.sh
 
   enrichment-flink-jobmanager:
@@ -63,11 +51,11 @@ services:
       --kafka.group.id enrichment-job
       --kafka.input.topic input-topic
       --kafka.output.topic output-topic
-    ports:
-      - "8081:8081"
     depends_on:
       kafka:
         condition: service_healthy
+    ports:
+      - "8081:8081"
 
   enrichment-flink-taskmanager:
     hostname: enrichment-flink-taskmanager
