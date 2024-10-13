@@ -19,11 +19,13 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
 public class ServiceFetcher implements AsyncFunction<TransformedMessage, PreEnrichmentMessage> {
+
+    public static final String NAME = "Flink Fetcher";
+
     private static final String SERVICE_URI_FORMAT = "%s/value/%s";
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     private final String serviceBaseUrl;
-
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
     public ServiceFetcher(String serviceUrl) {
         this.serviceBaseUrl = serviceUrl;
@@ -78,7 +80,7 @@ public class ServiceFetcher implements AsyncFunction<TransformedMessage, PreEnri
         resultFuture.complete(Collections.singleton(preEnrichmentMessage));
     }
 
-    public ServiceResponse deserializeAvroJson(String jsonData) throws IOException {
+    private ServiceResponse deserializeAvroJson(String jsonData) throws IOException {
         DatumReader<ServiceResponse> datumReader = new SpecificDatumReader<>(ServiceResponse.class);
         Decoder decoder = DecoderFactory.get().jsonDecoder(ServiceResponse.getClassSchema(), jsonData);
         return datumReader.read(null, decoder);

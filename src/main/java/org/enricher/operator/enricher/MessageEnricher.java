@@ -10,6 +10,9 @@ import org.enricher.model.ServiceResponse;
 
 public class MessageEnricher extends RichMapFunction<PreEnrichmentMessage, EnrichedMessage> {
 
+    public static final String NAME = "Message Enricher";
+    public static final String UID = "a045c01a-7f2e-41d0-b195-d4d87ea63c3e";
+
     private transient ValueState<ServiceResponse> serviceResponseState;
 
     @Override

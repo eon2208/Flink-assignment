@@ -1,4 +1,4 @@
-package org.enricher.operator.connector.kafka.sink;
+package org.enricher.operator.connector.kafka;
 
 import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
@@ -8,6 +8,9 @@ import org.enricher.config.StreamingProperties;
 import org.enricher.model.EnrichedMessage;
 
 public final class EnrichedMessageKafkaSink {
+
+    public static final String OUTPUT_STREAM_NAME = "Kafka Output";
+    public static final String OUTPUT_STREAM_UID = "69a7eeac-88db-4e04-ae37-ea1cba00c591";
 
     private EnrichedMessageKafkaSink() {
         //no-op

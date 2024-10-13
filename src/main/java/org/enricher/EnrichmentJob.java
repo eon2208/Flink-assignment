@@ -11,15 +11,23 @@ import org.enricher.config.StreamingProperties;
 import org.enricher.model.EnrichedMessage;
 import org.enricher.model.InputMessage;
 import org.enricher.model.PreEnrichmentMessage;
-import org.enricher.operator.connector.kafka.sink.EnrichedMessageKafkaSink;
-import org.enricher.operator.connector.kafka.source.InputMessagesKafkaSource;
+import org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink;
+import org.enricher.operator.connector.kafka.InputMessagesKafkaSource;
 import org.enricher.operator.enricher.MessageEnricher;
 import org.enricher.operator.fetcher.ServiceFetcher;
-import org.enricher.operator.transformation.MessageTransformer;
+import org.enricher.operator.transformer.MessageTransformer;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.enricher.config.StreamingProperties.*;
+import static org.enricher.config.StreamingProperties.KAFKA_BOOTSTRAP_SERVERS;
+import static org.enricher.config.StreamingProperties.KAFKA_GROUP_ID;
+import static org.enricher.config.StreamingProperties.KAFKA_INPUT_TOPIC;
+import static org.enricher.config.StreamingProperties.KAFKA_OUTPUT_TOPIC;
+import static org.enricher.config.StreamingProperties.SERVICE_BASE_URL;
+import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_NAME;
+import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_UID;
+import static org.enricher.operator.connector.kafka.InputMessagesKafkaSource.INPUT_STREAM_NAME;
+import static org.enricher.operator.connector.kafka.InputMessagesKafkaSource.INPUT_STREAM_UID;
 
 public class EnrichmentJob {
 
@@ -51,6 +59,9 @@ public class EnrichmentJob {
     }
 
     static class StreamingJob {
+
+        private static final String ENRICHMENT_JOB_NAME = "Enrichment Job";
+
         private final StreamExecutionEnvironment env;
         private final KafkaSource<InputMessage> source;
         private final KafkaSink<EnrichedMessage> sink;
@@ -76,16 +87,18 @@ public class EnrichmentJob {
 
         public void execute() throws Exception {
             buildJobGraph();
-            env.execute("Enrichment Job");
+            env.execute(ENRICHMENT_JOB_NAME);
         }
 
         private void buildJobGraph() {
             var dataStreamSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source")
+                    .name(INPUT_STREAM_NAME)
+                    .uid(INPUT_STREAM_UID)
                     .keyBy(InputMessage::getValue);
 
             var transformingStream = dataStreamSource
                     .map(messageTransformer)
-                    .name("Flink Transformer")
+                    .name(MessageTransformer.NAME)
                     .disableChaining();
 
             var fetchingStream = AsyncDataStream.orderedWait(
@@ -93,16 +106,18 @@ public class EnrichmentJob {
                     serviceFetcher,
                     5, TimeUnit.SECONDS,
                     100
-            ).name("Flink Fetcher");
+            ).name(ServiceFetcher.NAME);
 
             var enrichingStream = fetchingStream
                     .keyBy((KeySelector<PreEnrichmentMessage, Integer>) value -> value.getTransformedMessage().getValue())
                     .map(messageEnricher)
-                    .name("Flink Enrichment")
+                    .name(MessageEnricher.NAME)
+                    .name(MessageEnricher.UID)
                     .disableChaining();
 
             enrichingStream.sinkTo(sink)
-                    .name("Flink Sink");
+                    .name(OUTPUT_STREAM_NAME)
+                    .uid(OUTPUT_STREAM_UID);
         }
     }
 }
