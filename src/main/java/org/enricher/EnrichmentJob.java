@@ -6,11 +6,14 @@ import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
+import org.apache.flink.streaming.api.datastream.KeyedStream;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.enricher.config.StreamingProperties;
 import org.enricher.model.EnrichedMessage;
 import org.enricher.model.InputMessage;
 import org.enricher.model.PreEnrichmentMessage;
+import org.enricher.model.TransformedMessage;
 import org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink;
 import org.enricher.operator.connector.kafka.InputMessagesKafkaSource;
 import org.enricher.operator.enricher.MessageEnricher;
@@ -19,11 +22,7 @@ import org.enricher.operator.transformer.MessageTransformer;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.enricher.config.StreamingProperties.KAFKA_BOOTSTRAP_SERVERS;
-import static org.enricher.config.StreamingProperties.KAFKA_GROUP_ID;
-import static org.enricher.config.StreamingProperties.KAFKA_INPUT_TOPIC;
-import static org.enricher.config.StreamingProperties.KAFKA_OUTPUT_TOPIC;
-import static org.enricher.config.StreamingProperties.SERVICE_BASE_URL;
+import static org.enricher.config.StreamingProperties.*;
 import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_NAME;
 import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_UID;
 import static org.enricher.operator.connector.kafka.InputMessagesKafkaSource.INPUT_STREAM_NAME;
@@ -58,7 +57,7 @@ public class EnrichmentJob {
         streamingJob.execute();
     }
 
-    static class StreamingJob {
+    public static class StreamingJob {
 
         private static final String ENRICHMENT_JOB_NAME = "Enrichment Job";
 
@@ -91,28 +90,32 @@ public class EnrichmentJob {
         }
 
         private void buildJobGraph() {
-            var dataStreamSource = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source")
-                    .name(INPUT_STREAM_NAME)
+            KeyedStream<InputMessage, Integer> dataStreamSource = env.fromSource(
+                            source,
+                            WatermarkStrategy.noWatermarks(),
+                            "Kafka Source"
+                    ).name(INPUT_STREAM_NAME)
                     .uid(INPUT_STREAM_UID)
                     .keyBy(InputMessage::getValue);
 
-            var transformingStream = dataStreamSource
+            SingleOutputStreamOperator<TransformedMessage> transformingStream = dataStreamSource
                     .map(messageTransformer)
                     .name(MessageTransformer.NAME)
                     .disableChaining();
 
-            var fetchingStream = AsyncDataStream.orderedWait(
+            SingleOutputStreamOperator<PreEnrichmentMessage> fetchingStream = AsyncDataStream.orderedWait(
                     transformingStream,
                     serviceFetcher,
                     5, TimeUnit.SECONDS,
                     100
             ).name(ServiceFetcher.NAME);
 
-            var enrichingStream = fetchingStream
-                    .keyBy((KeySelector<PreEnrichmentMessage, Integer>) value -> value.getTransformedMessage().getValue())
-                    .map(messageEnricher)
+            SingleOutputStreamOperator<EnrichedMessage> enrichingStream = fetchingStream
+                    .keyBy((KeySelector<PreEnrichmentMessage, Integer>) value ->
+                            value.getTransformedMessage().getValue()
+                    ).map(messageEnricher)
                     .name(MessageEnricher.NAME)
-                    .name(MessageEnricher.UID)
+                    .uid(MessageEnricher.UID)
                     .disableChaining();
 
             enrichingStream.sinkTo(sink)

@@ -73,6 +73,7 @@ dependencies {
     testImplementation("org.apache.flink:flink-streaming-java:${flinkVersion}:tests")
     testImplementation("org.assertj:assertj-core:3.25.2")
     testImplementation("org.mockito:mockito-core:5.11.0")
+    testImplementation("com.github.tomakehurst:wiremock-jre8:2.35.0")
 }
 
 tasks {

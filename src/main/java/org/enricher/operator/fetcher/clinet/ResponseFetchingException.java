@@ -1,4 +1,4 @@
-package org.enricher.operator.fetcher;
+package org.enricher.operator.fetcher.clinet;
 
 public class ResponseFetchingException extends RuntimeException {
 
