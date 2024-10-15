@@ -45,4 +45,10 @@ public class ServiceFetcher extends RichAsyncFunction<TransformedMessage, PreEnr
                     return null;
                 });
     }
+
+    @Override
+    public void timeout(TransformedMessage input, ResultFuture<PreEnrichmentMessage> resultFuture) {
+        // on timeout skip the record
+        resultFuture.complete(Collections.emptyList());
+    }
 }

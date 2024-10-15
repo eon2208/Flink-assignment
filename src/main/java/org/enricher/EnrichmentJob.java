@@ -1,11 +1,9 @@
 package org.enricher;
 
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.connector.kafka.sink.KafkaSink;
-import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.streaming.api.datastream.AsyncDataStream;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.KeyedStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -14,6 +12,7 @@ import org.enricher.model.EnrichedMessage;
 import org.enricher.model.InputMessage;
 import org.enricher.model.PreEnrichmentMessage;
 import org.enricher.model.TransformedMessage;
+import org.enricher.operator.connector.NamedSink;
 import org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink;
 import org.enricher.operator.connector.kafka.InputMessagesKafkaSource;
 import org.enricher.operator.enricher.MessageEnricher;
@@ -22,11 +21,11 @@ import org.enricher.operator.transformer.MessageTransformer;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.enricher.config.StreamingProperties.*;
-import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_NAME;
-import static org.enricher.operator.connector.kafka.EnrichedMessageKafkaSink.OUTPUT_STREAM_UID;
-import static org.enricher.operator.connector.kafka.InputMessagesKafkaSource.INPUT_STREAM_NAME;
-import static org.enricher.operator.connector.kafka.InputMessagesKafkaSource.INPUT_STREAM_UID;
+import static org.enricher.config.StreamingProperties.KAFKA_BOOTSTRAP_SERVERS;
+import static org.enricher.config.StreamingProperties.KAFKA_GROUP_ID;
+import static org.enricher.config.StreamingProperties.KAFKA_INPUT_TOPIC;
+import static org.enricher.config.StreamingProperties.KAFKA_OUTPUT_TOPIC;
+import static org.enricher.config.StreamingProperties.SERVICE_BASE_URL;
 
 public class EnrichmentJob {
 
@@ -43,18 +42,23 @@ public class EnrichmentJob {
                 params.get(KAFKA_OUTPUT_TOPIC),
                 params.get(SERVICE_BASE_URL)
         );
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamingJob streamingJob = prepareStreamingJob(properties);
 
-        StreamingJob streamingJob = new StreamingJob(
+        streamingJob.execute();
+    }
+
+    private static StreamingJob prepareStreamingJob(StreamingProperties properties) {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        InputMessagesKafkaSource inputSource = new InputMessagesKafkaSource(env, properties);
+        EnrichedMessageKafkaSink sink = new EnrichedMessageKafkaSink(properties);
+        return new StreamingJob(
                 env,
-                InputMessagesKafkaSource.createKafkaSource(properties),
-                EnrichedMessageKafkaSink.createSink(properties),
+                inputSource.createKafkaSource(),
+                sink.createSink(),
                 new MessageTransformer(),
                 new ServiceFetcher(properties.serviceBaseUrl()),
                 new MessageEnricher()
         );
-
-        streamingJob.execute();
     }
 
     public static class StreamingJob {
@@ -62,16 +66,16 @@ public class EnrichmentJob {
         private static final String ENRICHMENT_JOB_NAME = "Enrichment Job";
 
         private final StreamExecutionEnvironment env;
-        private final KafkaSource<InputMessage> source;
-        private final KafkaSink<EnrichedMessage> sink;
+        private final DataStream<InputMessage> source;
+        private final NamedSink<EnrichedMessage> namedSink;
         private final MessageTransformer messageTransformer;
         private final ServiceFetcher serviceFetcher;
         private final MessageEnricher messageEnricher;
 
         public StreamingJob(
                 StreamExecutionEnvironment env,
-                KafkaSource<InputMessage> source,
-                KafkaSink<EnrichedMessage> sink,
+                DataStream<InputMessage> source,
+                NamedSink<EnrichedMessage> namedSink,
                 MessageTransformer messageTransformer,
                 ServiceFetcher serviceFetcher,
                 MessageEnricher messageEnricher
@@ -81,7 +85,7 @@ public class EnrichmentJob {
             this.messageTransformer = messageTransformer;
             this.serviceFetcher = serviceFetcher;
             this.messageEnricher = messageEnricher;
-            this.sink = sink;
+            this.namedSink = namedSink;
         }
 
         public void execute() throws Exception {
@@ -90,18 +94,12 @@ public class EnrichmentJob {
         }
 
         private void buildJobGraph() {
-            KeyedStream<InputMessage, Integer> dataStreamSource = env.fromSource(
-                            source,
-                            WatermarkStrategy.noWatermarks(),
-                            "Kafka Source"
-                    ).name(INPUT_STREAM_NAME)
-                    .uid(INPUT_STREAM_UID)
+            KeyedStream<InputMessage, Integer> dataStreamSource = source
                     .keyBy(InputMessage::getValue);
 
             SingleOutputStreamOperator<TransformedMessage> transformingStream = dataStreamSource
                     .map(messageTransformer)
-                    .name(MessageTransformer.NAME)
-                    .disableChaining();
+                    .name(MessageTransformer.NAME);
 
             SingleOutputStreamOperator<PreEnrichmentMessage> fetchingStream = AsyncDataStream.orderedWait(
                     transformingStream,
@@ -115,12 +113,11 @@ public class EnrichmentJob {
                             value.getTransformedMessage().getValue()
                     ).map(messageEnricher)
                     .name(MessageEnricher.NAME)
-                    .uid(MessageEnricher.UID)
-                    .disableChaining();
+                    .uid(MessageEnricher.UID);
 
-            enrichingStream.sinkTo(sink)
-                    .name(OUTPUT_STREAM_NAME)
-                    .uid(OUTPUT_STREAM_UID);
+            enrichingStream.sinkTo(namedSink.sink())
+                    .name(namedSink.sinkName())
+                    .uid(namedSink.sinkUid());
         }
     }
 }

@@ -1,38 +1,25 @@
 package org.enricher.operator.fetcher.clinet;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import org.enricher.model.ServiceResponse;
+import org.enricher.operator.config.WireMockConfig;
 import org.enricher.operator.fetcher.clinet.impl.DefaultServiceClient;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ExecutionException;
 
-import static org.enricher.operator.utils.ServiceWireMockUtils.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class DefaultServiceClientTest {
+public class DefaultServiceClientTest extends WireMockConfig {
 
-    private WireMockServer wireMockServer;
-
-    @BeforeEach
-    public void setUp() {
-        wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
-        wireMockServer.start();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        wireMockServer.stop();
-    }
+    private final ServiceClient sut = new DefaultServiceClient(getBaseUrl());
 
     @Test
     public void shouldReturnServiceResponse() throws ExecutionException, InterruptedException {
         //given
-        ServiceClient sut = new DefaultServiceClient(wireMockServer.baseUrl());
-        shouldMockTheServiceResponseForValue(wireMockServer, 1);
+        shouldMockTheServiceResponseForValue(1);
 
         //when
         ServiceResponse response = sut.fetchData(1).get();
@@ -47,8 +34,7 @@ public class DefaultServiceClientTest {
     @Test
     public void shouldHandleClientError() {
         //given
-        ServiceClient sut = new DefaultServiceClient(wireMockServer.baseUrl());
-        shouldMockClientErrorForValue(wireMockServer, 2);
+        shouldMockClientErrorForValue(2);
 
         //when
         ExecutionException exception = assertThrows(ExecutionException.class, () -> sut.fetchData(2).get());
@@ -61,8 +47,7 @@ public class DefaultServiceClientTest {
     @Test
     public void shouldHandleServerError() {
         //given
-        ServiceClient sut = new DefaultServiceClient(wireMockServer.baseUrl());
-        shouldMockServerErrorForValue(wireMockServer, 3);
+        shouldMockServerErrorForValue(3);
 
         //when
         ExecutionException exception = assertThrows(ExecutionException.class, () -> sut.fetchData(3).get());
@@ -75,8 +60,7 @@ public class DefaultServiceClientTest {
     @Test
     public void shouldHandleUnexpectedStatusCode() {
         //given
-        ServiceClient sut = new DefaultServiceClient(wireMockServer.baseUrl());
-        shouldMockUnexpectedStatusCodeForValue(wireMockServer, 4);
+        shouldMockUnexpectedStatusCodeForValue(4);
 
         //when
         ExecutionException exception = assertThrows(ExecutionException.class, () -> sut.fetchData(4).get());

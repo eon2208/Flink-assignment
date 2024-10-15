@@ -1,22 +1,32 @@
 package org.enricher.operator.connector.kafka;
 
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.formats.avro.AvroDeserializationSchema;
 import org.apache.flink.formats.avro.AvroFormatOptions;
+import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.enricher.config.StreamingProperties;
 import org.enricher.model.InputMessage;
 
-public final class InputMessagesKafkaSource {
+public class InputMessagesKafkaSource {
 
-    public static final String INPUT_STREAM_NAME = "Kafka Source";
-    public static final String INPUT_STREAM_UID = "b58d1169-ae14-43fb-8796-fcea4c1b6d66";
+    private static final String INPUT_STREAM_NAME = "Kafka Source";
+    private static final String INPUT_STREAM_UID = "b58d1169-ae14-43fb-8796-fcea4c1b6d66";
 
-    private InputMessagesKafkaSource() {
-        //no-op
+    private final StreamExecutionEnvironment env;
+    private final StreamingProperties properties;
+
+    public InputMessagesKafkaSource(
+            StreamExecutionEnvironment env,
+            StreamingProperties properties
+    ) {
+        this.env = env;
+        this.properties = properties;
     }
 
-    public static KafkaSource<InputMessage> createKafkaSource(StreamingProperties properties) {
-        return KafkaSource.<InputMessage>builder()
+    public SingleOutputStreamOperator<InputMessage> createKafkaSource() {
+        KafkaSource<InputMessage> kafkaSource = KafkaSource.<InputMessage>builder()
                 .setBootstrapServers(properties.bootstrapServers())
                 .setGroupId(properties.groupId())
                 .setTopics(properties.inputTopic())
@@ -27,5 +37,12 @@ public final class InputMessagesKafkaSource {
                         )
                 )
                 .build();
+
+        return env.fromSource(
+                        kafkaSource,
+                        WatermarkStrategy.noWatermarks(),
+                        INPUT_STREAM_NAME
+                ).name(INPUT_STREAM_NAME)
+                .uid(INPUT_STREAM_UID);
     }
 }
