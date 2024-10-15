@@ -57,12 +57,11 @@ configurations {
 val flinkVersion = "1.20.0"
 val flinkConnectorVersion = "3.2.0-1.18"
 val avroVersion = "1.12.0"
+val wiremockVersion = "2.35.0"
 
 dependencies {
     implementation("org.apache.flink:flink-java:${flinkVersion}")
     implementation("org.apache.flink:flink-streaming-java:${flinkVersion}")
-    implementation("org.apache.flink:flink-avro:${flinkVersion}")
-    implementation("org.apache.avro:avro:${avroVersion}")
 
     flinkShadowJar("org.apache.flink:flink-connector-kafka:${flinkConnectorVersion}")
     flinkShadowJar("org.apache.flink:flink-avro:${flinkVersion}")
@@ -70,10 +69,8 @@ dependencies {
 
     testImplementation("org.apache.flink:flink-test-utils:${flinkVersion}")
     testImplementation("org.apache.flink:flink-runtime:${flinkVersion}")
+    testImplementation("com.github.tomakehurst:wiremock-jre8:${wiremockVersion}")
     testImplementation("org.apache.flink:flink-streaming-java:${flinkVersion}:tests")
-    testImplementation("org.assertj:assertj-core:3.25.2")
-    testImplementation("org.mockito:mockito-core:5.11.0")
-    testImplementation("com.github.tomakehurst:wiremock-jre8:2.35.0")
 }
 
 tasks {
