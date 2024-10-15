@@ -104,7 +104,7 @@ public class EnrichmentJob {
             SingleOutputStreamOperator<PreEnrichmentMessage> fetchingStream = AsyncDataStream.orderedWait(
                     transformingStream,
                     serviceFetcher,
-                    5, TimeUnit.SECONDS,
+                    2, TimeUnit.SECONDS,
                     100
             ).name(ServiceFetcher.NAME);
 
