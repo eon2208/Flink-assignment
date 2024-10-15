@@ -12,8 +12,7 @@ The Flink enrichment application performs the following key operations:
 ## Local Setup
 To start the local environment, follow these steps:
 
-* Navigate to the dev folder.
-* Execute the following command to build and run the application:
+* Execute the following command from the root source to build and run the application:
 ```bash  
 chmod +x ./dev/build-and-run.sh && ./dev/build-and-run.sh
 ```
