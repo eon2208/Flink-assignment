@@ -25,7 +25,7 @@ public abstract class WireMockConfig {
     }
 
     @BeforeEach
-    public void resetWireMockRequests() {
+    void resetWireMockRequests() {
         wireMockServer.resetAll();
     }
 

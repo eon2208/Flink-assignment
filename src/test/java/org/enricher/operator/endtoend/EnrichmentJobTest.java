@@ -5,7 +5,6 @@ import org.enricher.model.InputMessage;
 import org.enricher.operator.config.EndToEndTestConfig;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -33,20 +32,59 @@ class EnrichmentJobTest extends EndToEndTestConfig {
     }
 
     @Test
-    void shouldSkipTheMessageIfServiceFails() throws Exception {
+    void shouldSkipMessageIfServiceResponseWithClientError() throws Exception {
         //given
-        List<InputMessage> inputMessages = List.of(new InputMessage(1), new InputMessage(2));
-        List<EnrichedMessage> expectedOutput = Collections.singletonList(
-                createExpectedOutputMessageForValue(2)
+        List<InputMessage> inputMessages = List.of(new InputMessage(1), new InputMessage(2), new InputMessage(3));
+        List<EnrichedMessage> expectedOutput = List.of(
+                createExpectedOutputMessageForValue(2),
+                createExpectedOutputMessageForValue(3)
         );
         shouldMockClientErrorForValue(1);
-        shouldMockTheServiceResponseForValues(2);
+        shouldMockTheServiceResponseForValues(2, 3);
 
         //when
         executeJobForInput(inputMessages);
 
         //then
-        assertEquals(CollectSink.values.size(), 1);
+        assertEquals(CollectSink.values.size(), 2);
+        assertArrayEquals(expectedOutput.toArray(), CollectSink.values.toArray());
+    }
+
+    @Test
+    void shouldSkipMessageIfServiceResponseWithServerError() throws Exception {
+        //given
+        List<InputMessage> inputMessages = List.of(new InputMessage(1), new InputMessage(2), new InputMessage(3));
+        List<EnrichedMessage> expectedOutput = List.of(
+                createExpectedOutputMessageForValue(2),
+                createExpectedOutputMessageForValue(3)
+        );
+        shouldMockServerErrorForValue(1);
+        shouldMockTheServiceResponseForValues(2, 3);
+
+        //when
+        executeJobForInput(inputMessages);
+
+        //then
+        assertEquals(CollectSink.values.size(), 2);
+        assertArrayEquals(expectedOutput.toArray(), CollectSink.values.toArray());
+    }
+
+    @Test
+    void shouldSkipMessageIfServiceResponseWithUnexpectedStatus() throws Exception {
+        //given
+        List<InputMessage> inputMessages = List.of(new InputMessage(1), new InputMessage(2), new InputMessage(3));
+        List<EnrichedMessage> expectedOutput = List.of(
+                createExpectedOutputMessageForValue(2),
+                createExpectedOutputMessageForValue(3)
+        );
+        shouldMockUnexpectedStatusCodeForValue(1);
+        shouldMockTheServiceResponseForValues(2, 3);
+
+        //when
+        executeJobForInput(inputMessages);
+
+        //then
+        assertEquals(CollectSink.values.size(), 2);
         assertArrayEquals(expectedOutput.toArray(), CollectSink.values.toArray());
     }
 

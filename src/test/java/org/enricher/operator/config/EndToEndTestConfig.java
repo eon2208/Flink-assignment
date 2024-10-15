@@ -37,7 +37,7 @@ public abstract class EndToEndTestConfig extends WireMockConfig {
     }
 
     @BeforeEach
-    public void beforeEach() {
+    void beforeEach() {
         CollectSink.values.clear();
     }
 
