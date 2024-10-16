@@ -21,3 +21,8 @@ chmod +x ./dev/build-and-run.sh && ./dev/build-and-run.sh
 
 * The Redpanda (Kafka) UI can be accessed via the following URL:
   http://localhost:8089
+
+## Requirements
+* Min Java 17 version
+* Docker 
+* Docker Compose
