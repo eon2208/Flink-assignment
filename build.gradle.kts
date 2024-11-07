@@ -58,6 +58,7 @@ val flinkVersion = "1.20.0"
 val flinkConnectorVersion = "3.2.0-1.18"
 val avroVersion = "1.12.0"
 val wiremockVersion = "2.35.0"
+val daggerVersion = "2.50"
 
 dependencies {
     implementation("org.apache.flink:flink-java:${flinkVersion}")
@@ -66,6 +67,12 @@ dependencies {
     flinkShadowJar("org.apache.flink:flink-connector-kafka:${flinkConnectorVersion}")
     flinkShadowJar("org.apache.flink:flink-avro:${flinkVersion}")
     flinkShadowJar("org.apache.avro:avro:${avroVersion}")
+    flinkShadowJar("com.typesafe:config:1.4.3")
+    flinkShadowJar("com.google.dagger:dagger:${daggerVersion}")
+
+    implementation("com.google.dagger:dagger:${daggerVersion}")
+    annotationProcessor("com.google.dagger:dagger-compiler:${daggerVersion}")
+    testAnnotationProcessor("com.google.dagger:dagger-compiler:${daggerVersion}")
 
     testImplementation("org.apache.flink:flink-test-utils:${flinkVersion}")
     testImplementation("org.apache.flink:flink-runtime:${flinkVersion}")
